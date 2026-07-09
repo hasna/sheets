@@ -4,12 +4,12 @@
  * (or a bounded #VALUE! cell for the output-bomb class) instead of hanging, and
  * that a realistic ~10k-cell workbook still recalculates fast.
  *
- * The budget-based vectors (V2 dep-graph, V5 aggregate parse) are inherently
- * bounded at the *default* limits in ~7-10s (the op counter runs ~5e8 real
- * iterations; the aggregate parse cost is ~33 MiB of formula text). To keep the
- * suite fast and deterministic they are exercised here with tightened `limits`
- * on the *real* payloads, and the production defaults are pinned separately by
- * the "DEFAULT_LIMITS are the shipped values" test.
+ * The budget-based vectors (V2 dep-graph, V5 aggregate parse) are bounded at
+ * the *default* limits in ~1.5-2s (the op budget trips the O(N^2) dep scan; the
+ * wall-clock deadline trips the aggregate parse flood). To keep the suite fast
+ * and deterministic they are exercised here with tightened `limits` on the
+ * *real* payloads, and the production defaults are pinned separately by the
+ * "DEFAULT_LIMITS are the shipped values" test.
  */
 import { describe, expect, test } from "bun:test";
 import { csvToWorkbook } from "./csv.js";
@@ -216,9 +216,9 @@ describe("DEFAULT_LIMITS are the shipped values", () => {
       maxPopulatedCells: 1000000,
       maxRangeCells: 65536,
       maxCellsPerWrite: 100000,
-      recalcOpBudget: 500000000,
+      recalcOpBudget: 90000000,
       totalFormulaCharsBudget: 33554432,
-      recalcWallClockMs: 10000,
+      recalcWallClockMs: 1800,
       clockCheckInterval: 1000000,
     });
   });

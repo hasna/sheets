@@ -54,6 +54,14 @@ export interface SheetsLimits {
  * that cliff to be an effective single-call CPU bound. 65,536 keeps the
  * worst-case single-range evaluation well under a second while still sitting
  * roughly 100x above any realistic in-app range.
+ *
+ * `recalcWallClockMs` (1800) and `recalcOpBudget` (90M) bound the two residual
+ * within-cap payloads the source caps underprice: an O(N^2) dependency graph
+ * (thousands of `=SUM(A1:A20000)` cells) and a parse-aggregate flood (thousands
+ * of ~8000-char `=1+1+...` bodies). Both trip in ~1.5-2s at these values
+ * instead of blocking the event loop for ~10s. A realistic ~10k-cell workbook
+ * recalculates in ~70ms, so 1800ms keeps a ~25x safety margin against false
+ * positives; the op budget is scaled to the same time envelope.
  */
 export const DEFAULT_LIMITS: SheetsLimits = {
   maxFormulaLength: 8192,
@@ -63,9 +71,9 @@ export const DEFAULT_LIMITS: SheetsLimits = {
   maxPopulatedCells: 1000000,
   maxRangeCells: 65536,
   maxCellsPerWrite: 100000,
-  recalcOpBudget: 500000000,
+  recalcOpBudget: 90000000,
   totalFormulaCharsBudget: 33554432,
-  recalcWallClockMs: 10000,
+  recalcWallClockMs: 1800,
   clockCheckInterval: 1000000,
 };
 
