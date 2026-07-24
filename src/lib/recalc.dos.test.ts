@@ -153,13 +153,21 @@ describe("DoS vectors are neutralized", () => {
 
   test("V5 (aggregate): many max-length formulas trip the total parse budget", () => {
     // 5000 cells of an ~8000-char =1+1+... body (each individually under the
-    // per-formula cap). Tightened total budget so the aggregate trip is instant.
+    // per-formula cap). The aggregate parse-char budget must be the deterministic
+    // binding constraint, so it is tightened to trip after only a few dozen dep
+    // parses (fast on any runner) and the wall-clock deadline is lifted far above
+    // any runner's real parse time. Otherwise a slow CI runner's expensive parses
+    // cross the default 1800ms deadline first and the test flakes with
+    // `recalc_time_budget_exceeded` (and a budget that needs hundreds of parses
+    // can also blow the FAST_MS bound under heavy CPU contention).
     const body = "=1" + "+1".repeat(3999); // ~8000 chars, body ~7999 < 8192
     const entries: Array<[string, string]> = [];
     for (let r = 1; r <= 5000; r++) entries.push([`A${r}`, body]);
     const wb = createWorkbook({ rows: 5000, columns: 1 });
     const { ms, error } = run(() =>
-      setCells(wb, entries, undefined, { limits: { totalFormulaCharsBudget: 2_000_000 } }),
+      setCells(wb, entries, undefined, {
+        limits: { totalFormulaCharsBudget: 200_000, recalcWallClockMs: 600_000 },
+      }),
     );
     expect(error).toBeInstanceOf(SheetsLimitError);
     expect((error as SheetsLimitError).code).toBe("formula_parse_budget_exceeded");
